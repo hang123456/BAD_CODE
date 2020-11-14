@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <input type="text" v-model='name'>
+        <span>{{ name }}</span>
+        <span>{{ name }}</span>
+        <span>{{ age }}</span>
+        <span>{{ age }}</span>
+    </div>
+</body>
+<script>
+    class Vue {
+        constructor(option) {
+            this.$el = option.el
+            this.$data = option.data
+            this.$option = option
+            new Observer(this.$data)
+            Object.keys(this.$data).forEach(key => {
+                this._proxy(key)
+            })
+        new Compile(this.$el, this)
+        }
+        _proxy(key) {
+            Object.defineProperty(this, key, {
+                enumerable: true,
+                configurable: true,
+                get() {
+                    return this.$data[key]
+                },
+                set(newValue) {
+                    this.$data[key] = newValue
+
+                }
+            })
+        }
+    }
+    class Observer {
+        constructor(data) {
+            this.data = data
+            Object.keys(data).forEach(key => {
+                this.defineReactive(this.data, key, data[key])
+            })
+        }
+        defineReactive(data, key, val) {
+            const dep = new Dep()
+            Object.defineProperty(data, key, {
+                enumerable: true,
+                configurable: true,
+                get() {
+                     if(Dep.target){
+                         dep.addSub(Dep.target)
+                     }
+                     return val
+                },
+                set(newValue) {
+                   if(newValue === val){
+                       return
+                   }
+                   val = newValue
+                   dep.notify()
+                }
+            })
+        }
+    }
+class Dep {
+    constructor(){
+        this.subs = []
+    }
+    addSub(sub){
+          this.subs.push(sub)
+    }
+    notify(){
+        this.subs.forEach(item => {
+            item.update()
+        })
+    }
+}
+class Watch {
+    constructor(node,name,vm){
+        this.node = node
+        this.name = name
+        this.vm = vm
+        Dep.target = this
+        this.update()
+        Dep.target = null
+    }
+    update(){
+        this.node.nodeValue = this.vm[this.name]
+    }
+}
+const reg = /\{\{(.*)\}\}/
+class Compile {
+    constructor(el,vm){
+        this.el = document.querySelector(el)
+        this.vm = vm
+        this.frag = this._createFragment()
+        this.el.appendChild(this.frag)
+    }
+    _createFragment(){
+        const frag = document.createDocumentFragment()
+        let child
+        while(child = this.el.firstChild){
+            this._compile(child)
+            frag.appendChild(child)
+        }
+        return frag
+    }
+    _compile(node){
+        if(node.nodeType === 1){
+            console.log(node);
+            const attrs = node.attributes
+            if(attrs.hasOwnProperty('v-model')){
+                const name = attrs['v-model'].nodeValue
+                node.addEventListener('input',(e) => {
+                    this.vm[name] = e.target.value
+                })
+            }
+        }
+        if(node.nodeType === 3){
+            console.log(node);
+            console.log(RegExp.$1.trim());
+            // console.log(reg.test(node.nodeValue))
+            // const name = RegExp.$1.trim()
+            //     console.log(name);
+            if(reg.test(node.nodeValue)){
+                const name = RegExp.$1.trim()
+                console.log(name);
+                new Watch(node,name,this.vm)
+            }
+        }
+    }
+}
+</script>
+<script>
+    const app = new Vue({
+        el: '#app',
+        data: {
+            name: '徐明金',
+            age: 10
+        }
+    })
+</script>
+
+</html>
